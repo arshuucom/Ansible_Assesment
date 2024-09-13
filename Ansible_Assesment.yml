@@ -1,0 +1,61 @@
+---
+- name: Configure CA Certificates and Deploy Python Application
+  hosts: all
+  become: yes
+  vars:
+    # Define paths to CA certificates and application files
+    standard_ca_certificates:
+      - /path/to/standard/ca-certificates.crt
+    custom_ca_certificates:
+      - /path/to/custom/ca-certificate1.crt
+      - /path/to/custom/ca-certificate2.crt
+    python_app_dir: /opt/my_python_app
+    python_venv_dir: "{{ python_app_dir }}/venv"
+    python_app_requirements: /opt/my_python_app/requirements.txt
+
+  tasks:
+    - name: Install standard CA certificates
+      copy:
+        src: "{{ item }}"
+        dest: "/usr/local/share/ca-certificates/"
+        owner: root
+        group: root
+        mode: '0644'
+      with_items: "{{ standard_ca_certificates }}"
+      notify:
+        - Update CA certificates
+
+    - name: Install custom CA certificates
+      copy:
+        src: "{{ item }}"
+        dest: "/usr/local/share/ca-certificates/"
+        owner: root
+        group: root
+        mode: '0644'
+      with_items: "{{ custom_ca_certificates }}"
+      notify:
+        - Update CA certificates
+
+    - name: Ensure required packages are installed
+      apt:
+        name:
+          - python3-venv
+          - python3-pip
+        state: present
+
+    - name: Create virtual environment for the Python application
+      command:
+        cmd: python3 -m venv {{ python_venv_dir }}
+        creates: "{{ python_venv_dir }}"
+
+    - name: Install Python application dependencies
+      pip:
+        requirements: "{{ python_app_requirements }}"
+        virtualenv: "{{ python_venv_dir }}"
+        virtualenv_python: python3
+
+  handlers:
+    - name: Update CA certificates
+      command: update-ca-certificates
+      become: yes
+
